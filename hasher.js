@@ -11,11 +11,17 @@ var tabs = {
 };
 
 /*
- *  Copy to clipboard
+ *  Copy to clipboard (Clipboard API with execCommand fallback)
  */
 function copyToClipboard(id) {
-  $("#"+id).select(); 
-  document.execCommand('copy');
+  var el = document.getElementById(id);
+  var text = el ? (el.value || el.textContent || "") : "";
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text);
+  } else {
+    $("#" + id).select();
+    document.execCommand("copy");
+  }
 }
 
 
