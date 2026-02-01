@@ -13,6 +13,8 @@
   --accent-hover: #79b8ff;
   --success: #3fb950;
   --warning: #d29922;
+  --error: #f85149;
+  --error-bg: rgba(248, 81, 73, 0.15);
   --radius: 6px;
   --radius-sm: 4px;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
@@ -332,6 +334,50 @@ a.button:hover {
 
 #output .element:first-child {
   margin-top: 0;
+}
+
+/* Time tab: millisecond timestamp warning */
+#output .time-ms-warning {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: var(--error-bg);
+  border: 1px solid var(--error);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+#output .time-ms-warning-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#output .time-ms-warning-btn,
+#output .time-ms-warning-dismiss,
+#output .time-ms-warning-use-trimmed {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+#output .time-ms-warning-btn:hover,
+#output .time-ms-warning-dismiss:hover,
+#output .time-ms-warning-use-trimmed:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 #output .title {
