@@ -7,7 +7,8 @@ var tabs = {
   net : 5,
   time : 6,
   encode : 7,
-  number : 8
+  number : 8,
+  string : 9
 };
 
 /*
@@ -27,7 +28,7 @@ function copyToClipboard(id) {
 
 var hasher = {
   ipcalc : new ipCalc(),
-  tab : tabs.hash,
+  tab : tabs.time,
   elements: {
     h1 : {
       id : tabs.hash+"md5",

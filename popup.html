@@ -38,14 +38,37 @@
   <body>
 
     <div id="screen-1" class="screens">
-      <div id="info"><a href="#info"><img id="button-info" class="buttons-2" src="images/info.png" width="16" height="16" title="About" alt="" /></a><span style="border-right: 1px solid #ccc; margin-left: 5px; margin-right: 5px;"></span><img id="button-popout" class="buttons-2" src="images/popout.png" width="16" height="16" title="Open in new tab" alt="" /></div>
-      <ul id="tabs" class="buttons"><li id="hash" class="on l1">Hash</li><li id="hmac" class="l2">HMAC</li><li id="crc" class="l2">CRC</li><li id="cipher" class="l3">Cipher</li><li id="net">Net</li><li id="time">Time</li><li id="number" class="l1">Num</li><li id="string" class="l3">Strings</li><li id="encode">Encode</li></ul>
+      <header class="header-row">
+        <div class="tabs-area">
+          <ul id="tabs" class="primary-tabs" role="tablist">
+            <li id="time" class="tab-btn on" role="tab" aria-selected="true">Time</li>
+            <li id="encode" class="tab-btn" role="tab" aria-selected="false">Encode</li>
+            <li id="hash" class="tab-btn" role="tab" aria-selected="false">Hash</li>
+            <li id="string" class="tab-btn" role="tab" aria-selected="false">Strings</li>
+          </ul>
+          <div class="dropdown-wrap">
+            <button type="button" class="dropdown-trigger" id="more-tabs-btn" aria-haspopup="true" aria-expanded="false">More ▾</button>
+            <ul class="dropdown-menu" id="more-tabs-menu" role="menu">
+              <li id="hmac" class="tab-btn" role="menuitem">HMAC</li>
+              <li id="crc" class="tab-btn" role="menuitem">CRC</li>
+              <li id="cipher" class="tab-btn" role="menuitem">Cipher</li>
+              <li id="net" class="tab-btn" role="menuitem">Net</li>
+              <li id="number" class="tab-btn" role="menuitem">Num</li>
+            </ul>
+          </div>
+        </div>
+        <div id="info">
+          <a href="#info" title="About"><img id="button-info" class="buttons-2" src="images/info.png" width="18" height="18" alt="About" /></a>
+          <span></span>
+          <span id="button-popout-wrap" class="toolbar-btn" title="Open in new tab"><img id="button-popout" class="buttons-2" src="images/popout.png" width="18" height="18" alt="Open in new tab" /></span>
+        </div>
+      </header>
       <!-- input -->
       <div id="input">
         <div class="title">
           Input:
         </div>
-        <textarea id="input-value" style="min-width: 400px;" autofocus></textarea>
+        <textarea id="input-value" autofocus></textarea>
         <div id="input-password-wrapper" style="display: none;">
           <div class="title">
             Password:
@@ -60,20 +83,14 @@
     </div>
     
     <div id="screen-2" class="screens">
-
-      <div style="position: absolute;">
-        <a href="" class="button">Back</a>
-      </div>
-
-      <div style="position: absolute; right: 10px;">
-        <a href="https://chrome.google.com/webstore/detail/kignjplbjlocolcfldfhbonmbblpfbjb/reviews" class="button" target="_blank" title="Rate &amp; review!">
-          <img src="images/star.png" alt="" style="border: 0; vertical-align: middle;" /><img src="images/star.png" alt="" style="border: 0; vertical-align: middle;" /><img src="images/star.png" alt="" style="border: 0; vertical-align: middle;" /><img src="images/star.png" alt="" style="border: 0; vertical-align: middle;" /><img src="images/star.png" alt="" style="border: 0; vertical-align: middle;" />
+      <div class="nav-row">
+        <a href="" class="button back">Back</a>
+        <a href="https://chrome.google.com/webstore/detail/kignjplbjlocolcfldfhbonmbblpfbjb/reviews" class="button stars" target="_blank" title="Rate &amp; review!">
+          <img src="images/star.png" alt="" width="14" height="14" /><img src="images/star.png" alt="" width="14" height="14" /><img src="images/star.png" alt="" width="14" height="14" /><img src="images/star.png" alt="" width="14" height="14" /><img src="images/star.png" alt="" width="14" height="14" />
         </a>
       </div>
-      
-      <h1 style="text-align: center;">
-        About
-      </h1>
+
+      <h1>About</h1>
 
       <p>
         This extension is used to compute cryptographic hashes and do common conversions. It might be useful for programmers and system administrators.
