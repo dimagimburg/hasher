@@ -12,16 +12,179 @@ var tabs = {
 };
 
 /*
+ *  All IANA time zone names (for Time tab dropdown)
+ */
+function getTimeZones() {
+  if (typeof Intl !== "undefined" && Intl.supportedValuesOf) {
+    try {
+      return Intl.supportedValuesOf("timeZone").sort();
+    } catch (e) {}
+  }
+  return ["UTC", "America/New_York", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Tokyo", "Asia/Shanghai", "Australia/Sydney"].sort();
+}
+
+/* Pinned timezones at top of IN TIMEZONE list (display name, IANA id) */
+var timeZonePinned = [
+  { name: "New York", id: "America/New_York" },
+  { name: "Los Angeles", id: "America/Los_Angeles" },
+  { name: "London", id: "Europe/London" },
+  { name: "Paris", id: "Europe/Paris" },
+  { name: "Sydney", id: "Australia/Sydney" },
+  { name: "Auckland", id: "Pacific/Auckland" },
+  { name: "Jerusalem", id: "Asia/Jerusalem" }
+];
+
+function getOffsetString(tz) {
+  try {
+    var date = new Date();
+    var parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      timeZoneName: "longOffset"
+    }).formatToParts(date);
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === "timeZoneName") {
+        var v = parts[i].value;
+        var m = v.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+        if (m) {
+          var pad2 = function (s) { return (String(s).length < 2) ? "0" + s : s; };
+          return "UTC" + m[1] + pad2(m[2]) + ":" + pad2(m[3] || "0");
+        }
+        return "UTC+00:00";
+      }
+    }
+  } catch (e) {}
+  return "";
+}
+
+function getOffsetMinutes(tz) {
+  try {
+    var date = new Date();
+    var parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      timeZoneName: "longOffset"
+    }).formatToParts(date);
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === "timeZoneName") {
+        var v = parts[i].value;
+        var m = v.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+        if (m) {
+          var h = parseInt(m[2], 10) || 0;
+          var min = parseInt(m[3], 10) || 0;
+          var sign = m[1] === "-" ? -1 : 1;
+          return sign * (h * 60 + min);
+        }
+        return 0;
+      }
+    }
+  } catch (e) {}
+  return 0;
+}
+
+/* Build list for IN TIMEZONE select: pinned first (with display name + offset), then rest by offset (id + offset) */
+function getTimeZonesForSelect() {
+  var all = getTimeZones();
+  var pinnedIds = {};
+  var result = [];
+  for (var p = 0; p < timeZonePinned.length; p++) {
+    pinnedIds[timeZonePinned[p].id] = true;
+    var off = getOffsetString(timeZonePinned[p].id);
+    result.push({
+      value: timeZonePinned[p].id,
+      label: timeZonePinned[p].name + (off ? " (" + off + ")" : "")
+    });
+  }
+  var rest = [];
+  for (var r = 0; r < all.length; r++) {
+    if (!pinnedIds[all[r]]) rest.push(all[r]);
+  }
+  rest.sort(function (a, b) {
+    return getOffsetMinutes(a) - getOffsetMinutes(b);
+  });
+  for (var j = 0; j < rest.length; j++) {
+    var off = getOffsetString(rest[j]);
+    result.push({
+      value: rest[j],
+      label: rest[j] + (off ? " (" + off + ")" : "")
+    });
+  }
+  return result;
+}
+
+function getLocalTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+  } catch (e) {
+    return "local";
+  }
+}
+
+/* Order of outputs in the Time tab */
+var timeTabOrder = ["time5local", "time5", "time6"];
+
+/* Format date as ISO 8601 in a given timezone (YYYY-MM-DDTHH:mm:ss±HH:mm) */
+function formatDateISO8601InTZ(date, tz) {
+  try {
+    var parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).formatToParts(date);
+    var get = function (type) {
+      var p = parts.filter(function (x) { return x.type === type; })[0];
+      return p ? p.value : "";
+    };
+    var pad2 = function (s) { return (String(s).length < 2) ? "0" + s : s; };
+    var offset = "+00:00";
+    try {
+      var offsetParts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: tz,
+        timeZoneName: "longOffset"
+      }).formatToParts(date);
+      for (var o = 0; o < offsetParts.length; o++) {
+        if (offsetParts[o].type === "timeZoneName") {
+          var v = offsetParts[o].value;
+          var mm = v.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+          if (mm) {
+            offset = mm[1] + pad2(mm[2]) + ":" + pad2(mm[3] || "0");
+          }
+          break;
+        }
+      }
+    } catch (e2) {}
+    return get("year") + "-" + get("month") + "-" + get("day") + "T" +
+      get("hour") + ":" + get("minute") + ":" + get("second") + offset;
+  } catch (e) {
+    return "";
+  }
+}
+
+/*
  *  Copy to clipboard (Clipboard API with execCommand fallback)
  */
 function copyToClipboard(id) {
   var el = document.getElementById(id);
-  var text = el ? (el.value || el.textContent || "") : "";
+  var text = el ? (el.value !== undefined && el.value !== null ? el.value : (el.textContent || "")) : "";
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text);
   } else {
-    $("#" + id).select();
-    document.execCommand("copy");
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
+      el.select();
+      document.execCommand("copy");
+    } else {
+      var tmp = document.createElement("textarea");
+      tmp.value = text;
+      tmp.style.position = "fixed";
+      tmp.style.opacity = "0";
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+    }
   }
 }
 
@@ -467,122 +630,29 @@ var hasher = {
     },
 
 
-    // Time
-    time1 : {
-      id: tabs.time+"date2ts",
+    // Time (order defined by timeTabOrder: time5local, time5, time6)
+    time5local : {
+      id: tabs.time+"date2isoLocal",
       tab : tabs.time,
-      title: "Unixtime",
+      title: "ISO 8601 (Local)",
+      titleFn: function () {
+        return "ISO 8601 (Local – " + getLocalTimezone() + ")";
+      },
       calculate: function (input) {
         var date;
         if (/[^\d]/.test(input)) {
           date = new Date(input);
         } else {
-          date = new Date(1000*parseInt(input));
+          date = new Date(1000 * parseInt(input, 10));
         }
-        if (!isNaN(date.getTime())) {
-          return date.getTime()/1000;
-        }
-        return "";
-      }
-    },
-    time2 : {
-      id: tabs.time+"ts2date",
-      tab : tabs.time,
-      title: "Local time",
-      calculate: function (input) {
-        var date;
-        if (/[^\d]/.test(input)) {
-          date = new Date(input);
-        } else {
-          date = new Date(1000*parseInt(input));
-        }
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleString();
-        }
-        return "";
-      }
-    },
-    time3 : {
-      id: tabs.time+"date2sql",
-      tab : tabs.time,
-      title: "DATETIME (local)",
-      calculate: function (input) {
-        var ddd;
-        if (/[^\d]/.test(input)) {
-          ddd = new Date(input);
-        } else {
-          ddd = new Date(1000*parseInt(input));
-        }
-        if (!isNaN(ddd.getTime())) {
-          var y = ddd.getFullYear();
-          var m = ddd.getMonth() + 1;
-          var d = ddd.getDate();
-          var h = ddd.getHours();
-          var i = ddd.getMinutes();
-          var s = ddd.getSeconds();
-          
-          m = (m < 10) ? "0" + m : m;
-          d = (d < 10) ? "0" + d : d;
-          h = (h < 10) ? "0" + h : h;
-          i = (i < 10) ? "0" + i : i;
-          s = (s < 10) ? "0" + s : s;
-          
-          return y + "-" + m + "-" + d + " " + h + ":" + i + ":" + s;
-        }
-        return "";
-      }
-    },
-    time31 : {
-      id: tabs.time+"date2sqlutc",
-      tab : tabs.time,
-      title: "DATETIME (UTC)",
-      calculate: function (input) {
-        var ddd;
-        if (/[^\d]/.test(input)) {
-          ddd = new Date(input);
-        } else {
-          ddd = new Date(1000*parseInt(input));
-        }
-        if (!isNaN(ddd.getTime())) {
-          var y = ddd.getUTCFullYear();
-          var m = ddd.getUTCMonth() + 1;
-          var d = ddd.getUTCDate();
-          var h = ddd.getUTCHours();
-          var i = ddd.getUTCMinutes();
-          var s = ddd.getUTCSeconds();
-          
-          m = (m < 10) ? "0" + m : m;
-          d = (d < 10) ? "0" + d : d;
-          h = (h < 10) ? "0" + h : h;
-          i = (i < 10) ? "0" + i : i;
-          s = (s < 10) ? "0" + s : s;
-          
-          return y + "-" + m + "-" + d + " " + h + ":" + i + ":" + s;
-        }
-        return "";
-      }
-    },
-    time4 : {
-      id: tabs.time+"ts2RFC1123",
-      tab : tabs.time,
-      title: "RFC-1123",
-      calculate: function (input) {
-        var date;
-        if (/[^\d]/.test(input)) {
-          date = new Date(input);
-        } else {
-          date = new Date(1000*parseInt(input));
-        }
-        if (!isNaN(date.getTime())) {
-          return date.toUTCString();
-        }
-        return "";
+        if (isNaN(date.getTime())) return "";
+        return formatDateISO8601InTZ(date, getLocalTimezone());
       }
     },
     time5 : {
       id: tabs.time+"date2iso",
       tab : tabs.time,
-      title: "ISO 8601",
+      title: "ISO 8601 (UTC)",
       calculate: function (input) {
         var date;
         if (/[^\d]/.test(input)) {
@@ -594,6 +664,23 @@ var hasher = {
           return date.toISOString();
         }
         return "";
+      }
+    },
+    time6 : {
+      id: tabs.time+"tz",
+      tab : tabs.time,
+      title: "IN TIMEZONE",
+      tzSelector: true,
+      calculate: function (input, password, selectedTz) {
+        if (!selectedTz) return "";
+        var date;
+        if (/[^\d]/.test(input)) {
+          date = new Date(input);
+        } else {
+          date = new Date(1000 * parseInt(input, 10));
+        }
+        if (isNaN(date.getTime())) return "";
+        return formatDateISO8601InTZ(date, selectedTz);
       }
     },
 
@@ -898,11 +985,13 @@ var hasher = {
           }
           $("#"+this.id).toggleClass("on");
         });
-        // copy to clibboard on click
+        // copy to clipboard on click
         $("#"+this.elements[i].id+"-value").click(function () {
           $("#output .note").hide();
           var id = this.id.toString().replace("-value", "");
-          if ($("#"+id).val().length > 0) {
+          var node = document.getElementById(id);
+          var text = node ? (node.value !== undefined && node.value !== null ? node.value : (node.textContent || "")) : "";
+          if (text.length > 0) {
             $("#"+id+"-note").text("copied").show('fast');
             copyToClipboard(id);
           }
@@ -917,30 +1006,37 @@ var hasher = {
     $("#output .note").hide();
     var input = $("#input-value").val();
     var password = $("#input-password").val();
-    for (var i in this.elements) {
-      this.elements[i].rows = 0;
-      if (this.elements[i].tab == this.tab) {
-        // main calculation
-        var value = this.elements[i].calculate(input, password);
-        $("#"+this.elements[i].id).val(value);
+    var keys = (this.tab == tabs.time) ? timeTabOrder : Object.keys(this.elements);
+    for (var k = 0; k < keys.length; k++) {
+      var i = keys[k];
+      var elem = this.elements[i];
+      if (!elem || elem.tab != this.tab) continue;
+      elem.rows = 0;
+      var el = elem;
+      var value;
+      if (el.tzSelector) {
+        var selectedTz = $("#time-tz-select").val();
+        value = el.calculate(input, password, selectedTz);
+        $("#"+el.id).text(value);
+      } else {
+        value = el.calculate(input, password);
+        $("#"+el.id).val(value);
+      }
 
-        // expand
+      if (!el.tzSelector) {
         var res = value.toString().match(/(\n\r|\r\n|\n|\r)/g);
         var rows = 1;
         if (res != null && res.length != undefined) {
           rows = res.length + 1;
         }
-        
-        this.elements[i].rows = rows;
+        elem.rows = rows;
         if (rows > 1) {
-          $("#"+this.elements[i].id+"-expand").show().text(rows + " lines").show();
+          $("#"+el.id+"-expand").show().text(rows + " lines").show();
         } else {
-          $("#"+this.elements[i].id+"-expand").text("").hide();
+          $("#"+el.id+"-expand").text("").hide();
         }
-
-        // show ruler
-        if (this.elements[i].ruler != undefined) {
-          $("#"+this.elements[i].id+"-ruler").html(this.ruler(value, this.elements[i].ruler));
+        if (el.ruler != undefined) {
+          $("#"+el.id+"-ruler").html(this.ruler(value, el.ruler));
         }
       }
     }
@@ -950,28 +1046,165 @@ var hasher = {
    */
   render : function () {
     $("#output").html("");
-    for (var i in this.elements) {
-      if (this.elements[i].tab == this.tab) {
-        var html = 
-          '<div class="element">'+
+    var keys = (this.tab == tabs.time) ? timeTabOrder : Object.keys(this.elements);
+    for (var k = 0; k < keys.length; k++) {
+      var i = keys[k];
+      var el = this.elements[i];
+      if (!el || el.tab != this.tab) continue;
+      var title = el.titleFn ? el.titleFn() : el.title;
+      var html;
+        if (el.tzSelector) {
+        html =
+          '<div class="element element-tz">'+
             '<div>'+
-              '<span id="'+this.elements[i].id+'-title" class="title">'+
-                this.elements[i].title+
-              '</span>'+
-              '<span id="'+this.elements[i].id+'-expand" class="expand"></span>'+
-              '<span id="'+this.elements[i].id+'-note" class="note"></span>'+
+              '<span id="'+el.id+'-title" class="title">'+title+'</span>'+
+              '<span id="'+el.id+'-note" class="note"></span>'+
             '</div>'+
-            '<div id="'+this.elements[i].id+'-value" class="value">'+
-              //'<input id="'+this.elements[i].id+'" type="text" />';
-              '<textarea id="'+this.elements[i].id+'" rows="1"></textarea>';
-              // ruler
-              if (this.elements[i].ruler != undefined) {
-                html += '<div id="'+this.elements[i].id+'-ruler" class="ruler"></div>'
-              }
-        html += 
+            '<div class="tz-autocomplete">'+
+              '<input type="text" class="tz-input" placeholder="Search timezones…" autocomplete="off" />'+
+              '<input type="hidden" id="time-tz-select" />'+
+              '<div class="tz-dropdown"></div>'+
+            '</div>'+
+            '<div id="'+el.id+'-value" class="value">'+
+              '<div id="'+el.id+'" class="value-display" data-copy-target="true"></div>'+
             '</div>'+
           '</div>';
-        $("#output").append(html);
+      } else {
+        html =
+          '<div class="element">'+
+            '<div>'+
+              '<span id="'+el.id+'-title" class="title">'+title+'</span>'+
+              '<span id="'+el.id+'-expand" class="expand"></span>'+
+              '<span id="'+el.id+'-note" class="note"></span>'+
+            '</div>'+
+            '<div id="'+el.id+'-value" class="value">'+
+              '<textarea id="'+el.id+'" rows="1"></textarea>';
+        if (el.ruler != undefined) {
+          html += '<div id="'+el.id+'-ruler" class="ruler"></div>';
+        }
+        html += '</div></div>';
+      }
+      $("#output").append(html);
+    }
+    if (this.tab == tabs.time) {
+      var dropdown = document.querySelector(".tz-dropdown");
+      var input = document.querySelector(".tz-input");
+      var hidden = document.getElementById("time-tz-select");
+      if (dropdown && dropdown.children.length === 0) {
+        var tzList = getTimeZonesForSelect();
+        var defaultTz = "America/New_York";
+        var defaultLabel = "";
+        for (var t = 0; t < tzList.length; t++) {
+          var item = document.createElement("div");
+          item.className = "tz-option";
+          item.setAttribute("data-value", tzList[t].value);
+          item.textContent = tzList[t].label;
+          dropdown.appendChild(item);
+          if (tzList[t].value === defaultTz) defaultLabel = tzList[t].label;
+        }
+        if (hidden) {
+          hidden.value = defaultTz;
+          if (input) input.value = defaultLabel;
+        }
+        var closeTimer;
+        var highlightedIndex = 0;
+
+        function getVisibleOptions() {
+          var opts = dropdown.querySelectorAll(".tz-option");
+          var vis = [];
+          for (var o = 0; o < opts.length; o++) {
+            if (opts[o].style.display !== "none") vis.push(opts[o]);
+          }
+          return vis;
+        }
+
+        function setHighlight(index) {
+          var vis = getVisibleOptions();
+          if (vis.length === 0) return;
+          highlightedIndex = Math.max(0, Math.min(index, vis.length - 1));
+          for (var i = 0; i < vis.length; i++) {
+            vis[i].classList.toggle("highlighted", i === highlightedIndex);
+          }
+          var el = vis[highlightedIndex];
+          if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+
+        function selectHighlighted() {
+          var vis = getVisibleOptions();
+          if (vis.length === 0) return;
+          var el = vis[highlightedIndex];
+          if (!el) return;
+          var val = el.getAttribute("data-value");
+          var label = el.textContent;
+          if (hidden) hidden.value = val;
+          if (input) input.value = label;
+          dropdown.classList.remove("open");
+          hasher.update();
+        }
+
+        function filterAndShow() {
+          var q = (input.value || "").toLowerCase();
+          var opts = dropdown.querySelectorAll(".tz-option");
+          for (var o = 0; o < opts.length; o++) {
+            var show = opts[o].textContent.toLowerCase().indexOf(q) >= 0;
+            opts[o].style.display = show ? "" : "none";
+          }
+          dropdown.classList.add("open");
+          setHighlight(0);
+        }
+        function close() {
+          closeTimer = setTimeout(function () {
+            dropdown.classList.remove("open");
+          }, 150);
+        }
+        $(input).off("focus input").on("focus input", function () {
+          clearTimeout(closeTimer);
+          filterAndShow();
+        });
+        $(input).off("blur").on("blur", close);
+        $(input).off("keydown").on("keydown", function (e) {
+          if (!dropdown.classList.contains("open")) return;
+          var vis = getVisibleOptions();
+          if (e.which === 40) {
+            e.preventDefault();
+            setHighlight(highlightedIndex + 1);
+            return;
+          }
+          if (e.which === 38) {
+            e.preventDefault();
+            setHighlight(highlightedIndex - 1);
+            return;
+          }
+          if (e.which === 13) {
+            e.preventDefault();
+            selectHighlighted();
+            return;
+          }
+          if (e.which === 27) {
+            e.preventDefault();
+            dropdown.classList.remove("open");
+          }
+        });
+        $(dropdown).off("mousedown").on("mousedown", function (e) {
+          e.preventDefault();
+        });
+        $(dropdown).off("click").on("click", ".tz-option", function () {
+          var val = this.getAttribute("data-value");
+          var label = this.textContent;
+          if (hidden) hidden.value = val;
+          if (input) input.value = label;
+          dropdown.classList.remove("open");
+          hasher.update();
+        });
+        $(dropdown).off("mouseenter").on("mouseenter", ".tz-option", function () {
+          var vis = getVisibleOptions();
+          for (var i = 0; i < vis.length; i++) {
+            if (vis[i] === this) {
+              setHighlight(i);
+              break;
+            }
+          }
+        });
       }
     }
   },
