@@ -10,6 +10,29 @@ $(document).ready(function() {
     hasher.update();
   });
 
+  // Use trimmed value (set input to ts without last 3 digits, then dismiss)
+  $(document).on("click", ".time-ms-warning-use-trimmed", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var val = $(this).attr("data-trimmed-value");
+    if (val != null) {
+      $("#input-value").val(val);
+      hasher.timeMsWarningDismissedForValue = val;
+      var warn = document.getElementById("time-ms-warning");
+      if (warn) warn.style.display = "none";
+      hasher.update();
+    }
+  });
+
+  // Dismiss ms warning — hide until the user changes the input
+  $(document).on("click", ".time-ms-warning-dismiss", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    hasher.timeMsWarningDismissedForValue = ($("#input-value").val() || "").trim();
+    var warn = document.getElementById("time-ms-warning");
+    if (warn) warn.style.display = "none";
+  });
+
   // Open separate window (pop-out) — click on wrapper or icon
   $("#button-popout-wrap, #button-popout").click(function (e) {
     e.preventDefault();

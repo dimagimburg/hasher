@@ -119,7 +119,15 @@ function getLocalTimezone() {
 }
 
 /* Order of outputs in the Time tab */
-var timeTabOrder = ["time5local", "time5", "time6"];
+var timeTabOrder = ["time5local", "time5", "time6", "timeTsUtc"];
+
+/* Detect if numeric input looks like milliseconds (12–13 digits, reasonable date range) */
+function timeInputLooksLikeMs(input) {
+  var t = (input || "").trim();
+  if (!/^\d+$/.test(t)) return false;
+  var n = parseInt(t, 10);
+  return n >= 1e12 && n <= 2e13;
+}
 
 /* Format date as ISO 8601 in a given timezone (YYYY-MM-DDTHH:mm:ss±HH:mm) */
 function formatDateISO8601InTZ(date, tz) {
@@ -192,6 +200,12 @@ function copyToClipboard(id) {
 var hasher = {
   ipcalc : new ipCalc(),
   tab : tabs.time,
+  timeMsWarningDismissedForValue : null,
+  parseTimeInput : function (input) {
+    var t = (input || "").trim();
+    if (/^\d+$/.test(t)) return new Date(parseInt(t, 10) * 1000);
+    return new Date(input);
+  },
   elements: {
     h1 : {
       id : tabs.hash+"md5",
@@ -639,12 +653,7 @@ var hasher = {
         return "ISO 8601 (Local – " + getLocalTimezone() + ")";
       },
       calculate: function (input) {
-        var date;
-        if (/[^\d]/.test(input)) {
-          date = new Date(input);
-        } else {
-          date = new Date(1000 * parseInt(input, 10));
-        }
+        var date = hasher.parseTimeInput(input);
         if (isNaN(date.getTime())) return "";
         return formatDateISO8601InTZ(date, getLocalTimezone());
       }
@@ -654,16 +663,9 @@ var hasher = {
       tab : tabs.time,
       title: "ISO 8601 (UTC)",
       calculate: function (input) {
-        var date;
-        if (/[^\d]/.test(input)) {
-          date = new Date(input);
-        } else {
-          date = new Date(1000*parseInt(input));
-        }
-        if (!isNaN(date.getTime())) {
-          return date.toISOString();
-        }
-        return "";
+        var date = hasher.parseTimeInput(input);
+        if (isNaN(date.getTime())) return "";
+        return date.toISOString();
       }
     },
     time6 : {
@@ -673,14 +675,21 @@ var hasher = {
       tzSelector: true,
       calculate: function (input, password, selectedTz) {
         if (!selectedTz) return "";
-        var date;
-        if (/[^\d]/.test(input)) {
-          date = new Date(input);
-        } else {
-          date = new Date(1000 * parseInt(input, 10));
-        }
+        var date = hasher.parseTimeInput(input);
         if (isNaN(date.getTime())) return "";
         return formatDateISO8601InTZ(date, selectedTz);
+      }
+    },
+    timeTsUtc : {
+      id: tabs.time+"tsUtc",
+      tab : tabs.time,
+      title: "Timestamp (UTC)",
+      calculate: function (input) {
+        var t = (input || "").trim();
+        if (/^\d+$/.test(t)) return String(parseInt(t, 10));
+        var date = new Date(input);
+        if (isNaN(date.getTime())) return "";
+        return String(Math.floor(date.getTime() / 1000));
       }
     },
 
@@ -1017,10 +1026,14 @@ var hasher = {
       if (el.tzSelector) {
         var selectedTz = $("#time-tz-select").val();
         value = el.calculate(input, password, selectedTz);
-        $("#"+el.id).text(value);
+        var node = document.getElementById(el.id);
+        if (node) node.textContent = value;
+        else $("#"+el.id).text(value);
       } else {
         value = el.calculate(input, password);
-        $("#"+el.id).val(value);
+        var node = document.getElementById(el.id);
+        if (node) node.value = value;
+        else $("#"+el.id).val(value);
       }
 
       if (!el.tzSelector) {
@@ -1040,12 +1053,41 @@ var hasher = {
         }
       }
     }
+    if (this.tab == tabs.time) {
+      var trimmed = (input || "").trim();
+      var looksLikeMs = timeInputLooksLikeMs(trimmed);
+      var warn = document.getElementById("time-ms-warning");
+      if (warn) {
+        var dismissedForThisValue = hasher.timeMsWarningDismissedForValue !== null && trimmed === hasher.timeMsWarningDismissedForValue;
+        if (looksLikeMs && !dismissedForThisValue) {
+          var n = parseInt(trimmed, 10);
+          var trimmedValue = String(Math.floor(n / 1000));
+          var useBtn = warn.querySelector(".time-ms-warning-use-trimmed");
+          if (useBtn) {
+            useBtn.textContent = "use " + trimmedValue;
+            useBtn.setAttribute("data-trimmed-value", trimmedValue);
+          }
+          warn.style.display = "";
+        } else {
+          warn.style.display = "none";
+        }
+      }
+    }
   },
   /*
    * 
    */
   render : function () {
     $("#output").html("");
+    if (this.tab == tabs.time) {
+      $("#output").append(
+        '<div id="time-ms-warning" class="time-ms-warning" style="display:none">' +
+          '<span class="time-ms-warning-text">This value looks like a timestamp in milliseconds. To see a timestamp in seconds, remove the last 3 digits.</span> ' +
+          '<button type="button" class="time-ms-warning-use-trimmed"></button> ' +
+          '<button type="button" class="time-ms-warning-dismiss">Dismiss</button>' +
+        '</div>'
+      );
+    }
     var keys = (this.tab == tabs.time) ? timeTabOrder : Object.keys(this.elements);
     for (var k = 0; k < keys.length; k++) {
       var i = keys[k];
