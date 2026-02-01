@@ -286,6 +286,11 @@ a.button:hover {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Time tab: compact 1-line input */
+.time-tab-active #input textarea {
+  min-height: 2.5em;
+}
+
 #input textarea:focus {
   outline: none;
   border-color: var(--border-focus);
@@ -398,6 +403,82 @@ a.button:hover {
   cursor: pointer;
   color: var(--text-primary);
   resize: none;
+}
+
+/* Time tab: timezone autocomplete */
+#output .element-tz .tz-autocomplete {
+  position: relative;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+#output .tz-input {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#output .tz-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15);
+}
+
+#output .tz-input::placeholder {
+  color: var(--text-muted);
+}
+
+#output .tz-dropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 50;
+}
+
+#output .tz-dropdown.open {
+  display: block;
+}
+
+#output .tz-option {
+  padding: 8px 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+#output .tz-option:hover,
+#output .tz-option.highlighted {
+  background: var(--bg-tertiary);
+}
+
+#output .tz-option.highlighted {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+#output .value-display {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  min-height: 1.4em;
+  cursor: pointer;
 }
 
 #output .ruler {

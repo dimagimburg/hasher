@@ -49,6 +49,7 @@ $(document).ready(function() {
     hasher.tab = tabValue;
     hasher.init();
     hasher.update();
+    $("#screen-1").toggleClass("time-tab-active", tabId === "time");
     $("#input-value").focus();
   }
 
@@ -94,7 +95,8 @@ $(document).ready(function() {
   onHashChange();
   hasher.init();
   hasher.update();
-  
+  $("#screen-1").toggleClass("time-tab-active", hasher.tab === tabs.time);
+
   // Focus hack, see http://stackoverflow.com/a/11400653/1295557
   if (location.search != "?focusHack") location.search = "?focusHack";
   //$("#input-value").focus();
